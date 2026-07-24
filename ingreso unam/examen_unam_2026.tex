@@ -1,0 +1,606 @@
+%%% Compilar con: xelatex -> bibtex/manual -> xelatex x2
+\documentclass[aps,prd,reprint,amsmath,amssymb,nofootinbib,superscriptaddress]{revtex4-2}
+
+\usepackage{fontspec}
+\setmainfont{Times New Roman}
+\setsansfont{Times New Roman}
+\setmonofont{Times New Roman}
+
+\usepackage{polyglossia}
+\setmainlanguage{spanish}
+\setotherlanguage{english}
+
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{amsmath}
+\usepackage{tikz}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.18}
+\usepgfplotslibrary{fillbetween}
+\usepackage[colorlinks=true,linkcolor=azulCCH,citecolor=azulCCH,urlcolor=azulCCH]{hyperref}
+
+\definecolor{azulCCH}{RGB}{0,59,113}
+\definecolor{doradoCCH}{RGB}{185,155,95}
+\definecolor{vinoUNAM}{RGB}{140,25,45}
+\definecolor{grisT}{RGB}{110,110,110}
+
+\pgfplotsset{
+  every axis/.append style={
+    font=\footnotesize, axis line style={grisT}, tick style={grisT},
+    grid=major, grid style={grisT!25,very thin}, label style={azulCCH},
+    tick label style={black!75},
+  }
+}
+
+\AtBeginDocument{%
+  \renewcommand{\tablename}{Tabla}%
+  \def\acknowledgmentsname{Agradecimientos}%
+}
+
+\begin{document}
+\renewcommand{\tablename}{Tabla}
+
+\title{Un desplazamiento an\'omalo en la distribuci\'on latente de puntajes
+del concurso de selecci\'on a licenciatura de la UNAM tras la transici\'on
+al examen en l\'inea}
+
+\author{Jeffrey E. B\'arcenas Mosqueda}
+\email{jeffrey.barcenas@cch.unam.mx}
+\affiliation{Colegio de Ciencias y Humanidades, Plantel Naucalpan,
+Universidad Nacional Aut\'onoma de M\'exico, Naucalpan, Estado de M\'exico, M\'exico}
+
+\date{\today}
+
+\begin{abstract}
+En 2026 la Universidad Nacional Aut\'onoma de M\'exico (UNAM) aplic\'o por
+primera vez de forma \'integramente remota su examen de selecci\'on a
+licenciatura, tras cinco ciclos de aplicaci\'on presencial en sedes
+arrendadas. Analizamos los puntajes m\'inimos de admisi\'on
+(\emph{aciertos m\'inimos}) publicados por la Direcci\'on General de
+Administraci\'on Escolar para los ciclos 2021--2026. El punto de partida
+metodol\'ogico es que dicho puntaje no es una medida de desempe\~no sino el
+estad\'istico de orden $K$-\'esimo de una distribuci\'on latente de
+puntajes, censurado por un piso administrativo. Construimos un modelo
+jer\'arquico bayesiano que invierte ese estad\'istico hacia la media
+latente y separa efectos de programa y de ciclo mediante una caminata
+aleatoria de primer orden. Los efectos de programa se marginalizan
+anal\'iticamente por la identidad de Sherman--Morrison, lo que reduce el
+espacio de par\'ametros de ${\sim}190$ a $13$ dimensiones y hace viable el
+muestreo con un algoritmo de ensamble af\'in-invariante. Estimamos un
+desplazamiento de $15.82$ aciertos (IC $95\%$: $[15.11,\,16.54]$) en la
+media latente de 2026 respecto de 2025, sobre un total de 120 reactivos.
+Una validaci\'on \emph{leave-one-year-out} muestra que la discrepancia
+predictiva t\'ipica del modelo es de $\pm 5$ aciertos y est\'a centrada en
+cero para 2024 y 2025, mientras que 2026 exhibe una discrepancia de
+$14.96$ aciertos con la totalidad del intervalo de credibilidad fuera de
+la banda de calibraci\'on. El resultado es robusto a variaciones de un
+factor dos en el \'unico par\'ametro d\'ebilmente identificado del modelo.
+Discutimos por qu\'e la magnitud estimada no es atribuible a un \'unico
+mecanismo y delimitamos con precisi\'on qu\'e no puede establecerse con
+datos agregados.
+\end{abstract}
+
+\maketitle
+
+\section{Introducci\'on}
+
+El concurso de selecci\'on a licenciatura de la UNAM es uno de los
+procesos de evaluaci\'on educativa de mayor escala en Iberoam\'erica. En
+el ciclo 2026 se registraron 191\,306 aspirantes, de los cuales 158\,712
+presentaron la prueba. Ese ciclo introdujo un cambio de dise\~no sin
+precedente: el examen, hist\'oricamente aplicado de manera presencial en
+sedes arrendadas por la instituci\'on, se aplic\'o \'integramente en
+l\'inea desde el domicilio de cada sustentante, con navegador seguro y
+supervisi\'on remota asistida por sistemas autom\'aticos, a lo largo de
+una ventana de tres semanas~\cite{gaceta2026}.
+
+Un cambio de esta naturaleza plantea una pregunta emp\'irica inmediata:
+\emph{\textquestiondown cambi\'o la distribuci\'on de puntajes?} La
+respuesta parecer\'ia estar al alcance de una comparaci\'on directa de los
+puntajes de corte publicados. Sostenemos que esa comparaci\'on es
+enga\~nosa por dos razones, y que corregirlas modifica la magnitud
+estimada del fen\'omeno en un factor cercano a dos.
+
+La primera raz\'on es que el puntaje de corte no mide desempe\~no. Es el
+puntaje del \'ultimo aspirante admitido, es decir, un estad\'istico de
+orden cuya posici\'on depende conjuntamente de la oferta de lugares, del
+n\'umero de sustentantes y de la forma de la distribuci\'on latente de
+puntajes. La segunda es que en 2026 la raz\'on de selecci\'on aument\'o
+simult\'aneamente: se admiti\'o a una fracci\'on mayor de los
+sustentantes, lo que \emph{por s\'i solo} presiona el corte a la baja.
+Que el corte haya subido pese a ello implica un desplazamiento de la
+distribuci\'on subyacente mayor que el observado en la superficie.
+
+Este trabajo formaliza esa intuici\'on. La secci\'on~\ref{sec:datos}
+describe los datos y los criterios de inclusi\'on; la
+secci\'on~\ref{sec:modelo}, el modelo de inversi\'on de cuantil censurado
+y su implementaci\'on; la secci\'on~\ref{sec:resultados}, los resultados y
+su validaci\'on; y la secci\'on~\ref{sec:discusion}, los l\'imites de lo
+que puede inferirse. Este \'ultimo punto no es un ap\'endice de cautela:
+es, a nuestro juicio, la contribuci\'on m\'as importante del art\'iculo.
+
+\section{Datos}\label{sec:datos}
+
+La Direcci\'on General de Administraci\'on Escolar publica, por ciclo y
+por programa, la oferta de lugares, el n\'umero de aspirantes registrados,
+el n\'umero que present\'o el examen, el puntaje m\'inimo de admisi\'on y
+el n\'umero de seleccionados. Recopilamos estas cifras para los ciclos
+2021--2026, obteniendo 1\,253 registros de programa-ciclo.
+
+La unidad de an\'alisis es el par (c\'odigo de programa, modalidad): un
+mismo c\'odigo se emplea para las modalidades abierta y a distancia, de
+modo que el c\'odigo por s\'i solo no identifica un\'ivocamente. Se
+identific\'o adem\'as un piso administrativo uniforme de 40 aciertos en
+las tres modalidades, por debajo del cual no se admite a ning\'un
+aspirante. Las observaciones en ese piso est\'an censuradas por la
+izquierda: el corte deja de ser informativo sobre la distribuci\'on
+latente. Excluimos tambi\'en los casos de saturaci\'on, en que
+pr\'acticamente todo sustentante fue admitido, y aquellos con muy pocos
+sustentantes. Formalmente conservamos las observaciones que cumplen
+\begin{equation}
+c_{jt} > 40, \qquad 0.01 < \frac{K_{jt}}{N_{jt}} < 0.95, \qquad N_{jt} > 30,
+\end{equation}
+donde $c_{jt}$ es el puntaje de corte, $K_{jt}$ el n\'umero de
+seleccionados y $N_{jt}$ el de sustentantes del programa $j$ en el ciclo
+$t$. Quedan 1016 observaciones ($83.7\%$ del total) sobre 180 unidades
+con al menos tres ciclos.
+
+\section{Modelo}\label{sec:modelo}
+
+\subsection{Inversi\'on del cuantil}
+
+Sea $X_{jt}$ el puntaje de un sustentante del programa $j$ en el ciclo
+$t$, sobre 120 reactivos. Suponemos
+$X_{jt}\sim\mathcal{N}(\mu_{jt},s^{2})$. El procedimiento de admisi\'on
+ordena a los sustentantes y admite a los $K_{jt}$ de mayor puntaje, de
+modo que el corte satisface
+\begin{equation}
+P\!\left(X_{jt}\ge c_{jt}\right)\;\simeq\;\frac{K_{jt}}{N_{jt}}\;\equiv\;p_{jt}.
+\end{equation}
+Cada registro proporciona, por tanto, un punto de la funci\'on de
+distribuci\'on acumulada latente. Invirtiendo,
+\begin{equation}
+\widehat{\mu}_{jt} \;=\; c_{jt}-\tfrac12 \;-\; s\,z_{jt},
+\qquad z_{jt}=\Phi^{-1}\!\left(1-p_{jt}\right),
+\label{eq:inv}
+\end{equation}
+con correcci\'on por continuidad. La incertidumbre de
+$\widehat{\mu}_{jt}$ proviene del error binomial en $p_{jt}$; por el
+m\'etodo delta,
+\begin{equation}
+v_{jt}\;\equiv\;\mathrm{Var}\!\left(\widehat{\mu}_{jt}\right)
+\;=\;\frac{s^{2}\,p_{jt}(1-p_{jt})}{N_{jt}\,\phi(z_{jt})^{2}} .
+\end{equation}
+
+La ecuaci\'on~\eqref{eq:inv} explicita el punto central del art\'iculo:
+el desplazamiento latente combina el cambio del corte y el cambio de la
+raz\'on de selecci\'on. Un aumento de $p$ reduce $z$, de manera que un
+corte que sube mientras la selecci\'on se ampl\'ia implica un
+desplazamiento de $\mu$ estrictamente mayor que $\Delta c$.
+
+\subsection{Estructura jer\'arquica}
+
+Descomponemos la media latente en un efecto de programa y uno de ciclo,
+\begin{equation}
+\mu_{jt} \;=\; a_j + \tau_t + \eta_{jt},
+\qquad \eta_{jt}\sim\mathcal{N}(0,\sigma_\eta^{2}),
+\end{equation}
+con $a_j\sim\mathcal{N}(m_{g(j)},\sigma_a^{2})$, donde $g(j)$ indexa el
+\'area de conocimiento. Los efectos de ciclo siguen una caminata
+aleatoria de primer orden,
+$\tau_t=\tau_{t-1}+\varepsilon_t$, $\varepsilon_t\sim\mathcal{N}(0,\sigma_{\mathrm{rw}}^{2})$,
+con $\tau_{2021}\equiv 0$ por identificabilidad. Esta elecci\'on es
+deliberadamente permisiva: una caminata aleatoria admite tendencias
+suaves y no penaliza cambios graduales, de modo que no fuerza la
+detecci\'on de una discontinuidad.
+
+\subsection{Marginalizaci\'on de los efectos de programa}
+
+Con ${\sim}180$ programas, el muestreo directo de $\{a_j\}$ es hostil para
+un algoritmo de ensamble. Dado que el modelo es gaussiano condicionalmente
+en las escalas, los $a_j$ pueden integrarse de forma exacta. Para el
+programa $j$ con $n_j$ observaciones, sea
+$r_{jt}=\widehat{\mu}_{jt}-\tau_t-m_{g(j)}$. Entonces
+\begin{equation}
+\mathbf{r}_j\sim\mathcal{N}\!\left(\mathbf{0},\;
+\mathsf{D}_j+\sigma_a^{2}\mathbf{1}\mathbf{1}^{\!\top}\right),
+\qquad \mathsf{D}_j=\mathrm{diag}\!\left(v_{jt}+\sigma_\eta^{2}\right).
+\end{equation}
+La identidad de Sherman--Morrison~\cite{hager1989} da la forma
+cuadr\'atica y el determinante en $\mathcal{O}(n_j)$:
+\begin{align}
+Q_j &= \textstyle\sum_t u_{jt}r_{jt}^{2}
+ - \frac{\sigma_a^{2}\left(\sum_t u_{jt}r_{jt}\right)^{2}}{1+\sigma_a^{2}\sum_t u_{jt}},\\
+\ln\!\left|\mathsf{\Sigma}_j\right| &= -\textstyle\sum_t \ln u_{jt}
+ + \ln\!\left(1+\sigma_a^{2}\textstyle\sum_t u_{jt}\right),
+\end{align}
+con $u_{jt}=(v_{jt}+\sigma_\eta^{2})^{-1}$. Todas las sumas se eval\'uan
+de forma vectorizada. El espacio muestral se reduce a los 13
+hiperpar\'ametros
+$\left(\tau_{2022..2026},\,m_{1..4},\,\ln s,\,\ln\sigma_a,\,\ln\sigma_\eta,\,\ln\sigma_{\mathrm{rw}}\right)$.
+
+\subsection{Distribuciones a priori}
+
+Adoptamos $\sigma_a,\sigma_\eta,\sigma_{\mathrm{rw}}$ semi-normales,
+$m_g\sim\mathcal{N}(60,30^{2})$ y, para la desviaci\'on est\'andar
+latente, $\ln s\sim\mathcal{N}(\ln 17,\,0.25^{2})$. Este \'ultimo es el
+\'unico prior con consecuencias sustantivas, porque $s$ fija la escala de
+la inversi\'on~\eqref{eq:inv}. Es tambi\'en el par\'ametro cuya
+identificaci\'on resulta m\'as d\'ebil: proviene \'unicamente de la
+exigencia de que $c_{jt}-s\,z_{jt}$ admita una descomposici\'on aditiva
+parsimoniosa. La secci\'on~\ref{sec:sens} documenta que la conclusi\'on
+principal es insensible a esta elecci\'on.
+
+\subsection{C\'omputo}
+
+El muestreo se realiz\'o con el algoritmo de ensamble af\'in-invariante de
+Goodman y Weare~\cite{goodman2010}, en la implementaci\'on
+\texttt{emcee}~\cite{foremanmackey2013}, con 80 caminantes y una mezcla de
+movimientos diferenciales ($80\%$ \texttt{DEMove}, $20\%$
+\texttt{DESnookerMove}). Dos decisiones fueron necesarias para obtener
+mezcla aceptable. Primero, el centrado de $z_{jt}$ respecto de su media
+muestral, que decorrela $s$ de los niveles $m_g$; sin \'el, el tiempo de
+autocorrelaci\'on integrado excede los 300 pasos. Segundo, una
+inicializaci\'on con dispersi\'on ajustada por bloque a la escala de cada
+par\'ametro: los movimientos diferenciales dependen de la diversidad del
+ensamble, y una bola isotr\'opica peque\~na produce exploraci\'on
+deficiente en las direcciones de nivel. Con ambos ajustes,
+$\tau_{\mathrm{int}}\le 89$ pasos sobre cadenas de 8\,000, con tasa de
+aceptaci\'on de $0.24$.
+
+\section{Resultados}\label{sec:resultados}
+
+\subsection{Trayectoria latente}
+
+La figura~\ref{fig:tau} y la tabla~\ref{tab:tau} presentan los efectos de
+ciclo. El periodo 2021--2025 es notablemente estable: todas las medianas
+caen en el intervalo $[-1.6,\,0.2]$ aciertos, con intervalos de
+credibilidad que rara vez exceden $\pm 1$ acierto. El ciclo 2026 rompe ese
+patr\'on con un valor de $15.79$ aciertos.
+
+\begin{figure}[t]
+\centering
+\begin{tikzpicture}
+\begin{axis}[
+  width=\columnwidth, height=6.1cm,
+  xlabel={Ciclo}, ylabel={$\tau_t$ (aciertos, base 2021)},
+  xmin=2020.6, xmax=2026.4, xtick={2021,2022,2023,2024,2025,2026},
+  xticklabel style={/pgf/number format/1000 sep=},
+  ymin=-4, ymax=19,
+]
+\addplot[name path=hi95,draw=none] coordinates {(2021.00,0.00) (2022.00,-0.87) (2023.00,-0.23) (2024.00,0.91) (2025.00,0.68) (2026.00,16.52)};
+\addplot[name path=lo95,draw=none] coordinates {(2021.00,0.00) (2022.00,-2.28) (2023.00,-1.64) (2024.00,-0.53) (2025.00,-0.73) (2026.00,15.05)};
+\addplot[azulCCH!18] fill between[of=hi95 and lo95];
+\addplot[name path=hi68,draw=none] coordinates {(2021.00,0.00) (2022.00,-1.23) (2023.00,-0.58) (2024.00,0.56) (2025.00,0.32) (2026.00,16.16)};
+\addplot[name path=lo68,draw=none] coordinates {(2021.00,0.00) (2022.00,-1.94) (2023.00,-1.29) (2024.00,-0.16) (2025.00,-0.39) (2026.00,15.41)};
+\addplot[azulCCH!38] fill between[of=hi68 and lo68];
+\addplot[azulCCH,very thick,mark=*,mark size=1.7pt,
+         mark options={fill=white,draw=azulCCH}]
+  coordinates {(2021.00,0.00) (2022.00,-1.58) (2023.00,-0.94) (2024.00,0.20) (2025.00,-0.04) (2026.00,15.79)};
+\draw[grisT,dashed] (axis cs:2020.6,0) -- (axis cs:2026.4,0);
+\node[anchor=east,font=\scriptsize,vinoUNAM]
+  at (axis cs:2025.85,15.8) {examen en l\'inea};
+\end{axis}
+\end{tikzpicture}
+\caption{Efecto latente de ciclo $\tau_t$, en aciertos sobre 120, con
+2021 como referencia. Bandas: intervalos de credibilidad al $68\%$ y
+$95\%$. La estabilidad del periodo presencial contrasta con el salto de
+2026.}
+\label{fig:tau}
+\end{figure}
+
+\begin{table}[t]
+\caption{Efectos de ciclo. Mediana a posteriori e intervalo de
+credibilidad al $95\%$, en aciertos.}
+\label{tab:tau}
+\begin{ruledtabular}
+\begin{tabular}{lcc}
+Ciclo & Mediana & IC $95\%$ \\ \colrule
+2021 & 0.00 & [0.00,\,0.00] \\
+2022 & -1.58 & [-2.28,\,-0.87] \\
+2023 & -0.94 & [-1.64,\,-0.23] \\
+2024 & 0.20 & [-0.53,\,0.91] \\
+2025 & -0.04 & [-0.73,\,0.68] \\
+2026 & 15.79 & [15.05,\,16.52] \\
+\end{tabular}
+\end{ruledtabular}
+\end{table}
+
+La diferencia entre ciclos consecutivos 2026--2025 es de $15.82$
+aciertos, con intervalo $[15.11,\,16.54]$ y
+$P(\Delta\tau>0)>0.9999$. Conviene contrastar esta cifra con el aumento
+crudo del puntaje de corte, de $9.2$ aciertos en promedio sobre los
+programas pareados. La discrepancia entre ambas ---un factor de $1.7$---
+es exactamente el efecto anticipado en la introducci\'on: la raz\'on media
+de selecci\'on pas\'o de $0.35$ a $0.42$, y esa ampliaci\'on de la
+admisi\'on enmascara parte del desplazamiento subyacente. La desviaci\'on
+est\'andar latente estimada es $s=21.1$ aciertos
+($[20.2,\,21.9]$), de modo que el desplazamiento equivale a
+aproximadamente $0.75$ desviaciones est\'andar.
+
+\subsection{Validaci\'on \emph{leave-one-year-out}}
+
+Que un salto sea grande respecto de la serie previa no basta: hay que
+saber cu\'anto se equivoca el modelo al predecir un ciclo que no ha visto.
+Ajustamos el modelo usando \'unicamente los ciclos anteriores a un ciclo
+$T$ dado, extrapolamos la caminata aleatoria un paso, obtenemos la
+posterior condicional de cada $a_j$ y predecimos el corte
+\emph{manteniendo fija la raz\'on de selecci\'on observada} en $T$. La
+discrepancia $D_{jT}=c^{\mathrm{obs}}_{jT}-c^{\mathrm{pred}}_{jT}$ mide
+entonces el desplazamiento distribucional no anticipado, limpio de
+cambios en oferta y demanda.
+
+\begin{figure}[t]
+\centering
+\begin{tikzpicture}
+\begin{axis}[
+  width=\columnwidth, height=5.6cm,
+  xlabel={Discrepancia media $\overline{D}_T$ (aciertos)},
+  ylabel={Densidad a posteriori (norm.)},
+  xmin=-9, xmax=22, ymin=0, ymax=1.18, ytick={0,0.5,1},
+  legend style={at={(0.02,0.98)},anchor=north west,draw=grisT!50,
+                font=\scriptsize,fill=white,fill opacity=0.85,
+                text opacity=1,row sep=0.5pt},
+]
+\addplot[draw=azulCCH,thick,fill=azulCCH,fill opacity=0.25,smooth] coordinates {(-18.7580,0.0003) (-18.4950,0.0007) (-18.2320,0.0012) (-17.9690,0.0019) (-17.7060,0.0026) (-17.4430,0.0031) (-17.1810,0.0032) (-16.9180,0.0029) (-16.6550,0.0025) (-16.3920,0.0021) (-16.1290,0.0021) (-15.8660,0.0026) (-15.6040,0.0035) (-15.3410,0.0046) (-15.0780,0.0056) (-14.8150,0.0060) (-14.5520,0.0057) (-14.2890,0.0049) (-14.0260,0.0037) (-13.7640,0.0024) (-13.5010,0.0014) (-13.2380,0.0009) (-12.9750,0.0008) (-12.7120,0.0010) (-12.4490,0.0017) (-12.1870,0.0026) (-11.9240,0.0037) (-11.6610,0.0046) (-11.3980,0.0053) (-11.1350,0.0055) (-10.8720,0.0052) (-10.6090,0.0044) (-10.3470,0.0035) (-10.0840,0.0027) (-9.8210,0.0023) (-9.5580,0.0028) (-9.2950,0.0044) (-9.0320,0.0068) (-8.7700,0.0096) (-8.5070,0.0120) (-8.2440,0.0134) (-7.9810,0.0134) (-7.7180,0.0126) (-7.4550,0.0118) (-7.1920,0.0119) (-6.9300,0.0134) (-6.6670,0.0161) (-6.4040,0.0194) (-6.1410,0.0226) (-5.8780,0.0252) (-5.6150,0.0272) (-5.3530,0.0289) (-5.0900,0.0312) (-4.8270,0.0350) (-4.5640,0.0414) (-4.3010,0.0510) (-4.0380,0.0640) (-3.7750,0.0797) (-3.5130,0.0971) (-3.2500,0.1152) (-2.9870,0.1340) (-2.7240,0.1542) (-2.4610,0.1777) (-2.1980,0.2064) (-1.9360,0.2421) (-1.6730,0.2861) (-1.4100,0.3397) (-1.1470,0.4037) (-0.8840,0.4783) (-0.6210,0.5624) (-0.3580,0.6536) (-0.0960,0.7476) (0.1670,0.8380) (0.4300,0.9161) (0.6930,0.9727) (0.9560,1.0000) (1.2190,0.9943) (1.4810,0.9567) (1.7440,0.8923) (2.0070,0.8083) (2.2700,0.7123) (2.5330,0.6117) (2.7960,0.5130) (3.0590,0.4223) (3.3210,0.3444) (3.5840,0.2817) (3.8470,0.2337) (4.1100,0.1977) (4.3730,0.1698) (4.6360,0.1468) (4.8980,0.1269) (5.1610,0.1093) (5.4240,0.0935) (5.6870,0.0790) (5.9500,0.0653) (6.2130,0.0523) (6.4760,0.0407) (6.7380,0.0312) (7.0010,0.0246) (7.2640,0.0210) (7.5270,0.0195) (7.7900,0.0188) (8.0530,0.0179) (8.3150,0.0165) (8.5780,0.0148) (8.8410,0.0133) (9.1040,0.0119) (9.3670,0.0106) (9.6300,0.0091) (9.8930,0.0075) (10.1550,0.0060) (10.4180,0.0048) (10.6810,0.0041) (10.9440,0.0039) (11.2070,0.0041) (11.4700,0.0044) (11.7320,0.0047) (11.9950,0.0052) (12.2580,0.0059) (12.5210,0.0064) (12.7840,0.0067) (13.0470,0.0063) (13.3100,0.0052) (13.5720,0.0039) (13.8350,0.0025) (14.0980,0.0014) (14.3610,0.0008) (14.6240,0.0005) (14.8870,0.0006) (15.1490,0.0009) (15.4120,0.0015) (15.6750,0.0022) (15.9380,0.0028) (16.2010,0.0032) (16.4640,0.0031) (16.7270,0.0026) (16.9890,0.0019) (17.2520,0.0012) (17.5150,0.0007) (17.7780,0.0003)};
+\addlegendentry{2024}
+\addplot[draw=doradoCCH,thick,fill=doradoCCH,fill opacity=0.25,smooth] coordinates {(-12.3440,0.0001) (-12.1160,0.0003) (-11.8880,0.0006) (-11.6600,0.0012) (-11.4320,0.0020) (-11.2040,0.0028) (-10.9760,0.0033) (-10.7480,0.0033) (-10.5200,0.0030) (-10.2920,0.0023) (-10.0640,0.0019) (-9.8360,0.0018) (-9.6080,0.0023) (-9.3800,0.0030) (-9.1520,0.0038) (-8.9240,0.0047) (-8.6960,0.0056) (-8.4680,0.0070) (-8.2400,0.0091) (-8.0110,0.0120) (-7.7830,0.0153) (-7.5550,0.0188) (-7.3270,0.0218) (-7.0990,0.0241) (-6.8710,0.0256) (-6.6430,0.0263) (-6.4150,0.0271) (-6.1870,0.0284) (-5.9590,0.0310) (-5.7310,0.0351) (-5.5030,0.0406) (-5.2750,0.0477) (-5.0470,0.0562) (-4.8190,0.0664) (-4.5910,0.0784) (-4.3630,0.0922) (-4.1350,0.1076) (-3.9070,0.1252) (-3.6790,0.1469) (-3.4510,0.1750) (-3.2220,0.2111) (-2.9940,0.2553) (-2.7660,0.3065) (-2.5380,0.3647) (-2.3100,0.4310) (-2.0820,0.5079) (-1.8540,0.5964) (-1.6260,0.6943) (-1.3980,0.7952) (-1.1700,0.8878) (-0.9420,0.9593) (-0.7140,0.9985) (-0.4860,1.0000) (-0.2580,0.9653) (-0.0300,0.9015) (0.1980,0.8182) (0.4260,0.7250) (0.6540,0.6303) (0.8820,0.5409) (1.1100,0.4610) (1.3390,0.3913) (1.5670,0.3304) (1.7950,0.2769) (2.0230,0.2301) (2.2510,0.1902) (2.4790,0.1570) (2.7070,0.1297) (2.9350,0.1071) (3.1630,0.0877) (3.3910,0.0710) (3.6190,0.0567) (3.8470,0.0455) (4.0750,0.0376) (4.3030,0.0329) (4.5310,0.0301) (4.7590,0.0281) (4.9870,0.0261) (5.2150,0.0241) (5.4430,0.0225) (5.6710,0.0218) (5.9000,0.0218) (6.1280,0.0217) (6.3560,0.0206) (6.5840,0.0182) (6.8120,0.0148) (7.0400,0.0112) (7.2680,0.0084) (7.4960,0.0066) (7.7240,0.0059) (7.9520,0.0058) (8.1800,0.0060) (8.4080,0.0062) (8.6360,0.0063) (8.8640,0.0062) (9.0920,0.0058) (9.3200,0.0051) (9.5480,0.0040) (9.7760,0.0029) (10.0040,0.0018) (10.2320,0.0010) (10.4600,0.0005) (10.6890,0.0002) (10.9170,0.0001) (11.1450,0.0000) (11.3730,0.0000) (11.6010,0.0000) (11.8290,0.0000) (12.0570,0.0000) (12.2850,0.0000) (12.5130,0.0000) (12.7410,0.0000) (12.9690,0.0000) (13.1970,0.0000) (13.4250,0.0000) (13.6530,0.0000) (13.8810,0.0000) (14.1090,0.0000) (14.3370,0.0000) (14.5650,0.0000) (14.7930,0.0000) (15.0210,0.0000) (15.2500,0.0000) (15.4780,0.0000) (15.7060,0.0000) (15.9340,0.0000) (16.1620,0.0000) (16.3900,0.0001) (16.6180,0.0003) (16.8460,0.0007) (17.0740,0.0013) (17.3020,0.0021) (17.5300,0.0029) (17.7580,0.0033) (17.9860,0.0033) (18.2140,0.0028) (18.4420,0.0020) (18.6700,0.0012) (18.8980,0.0006) (19.1260,0.0003) (19.3540,0.0001)};
+\addlegendentry{2025}
+\addplot[draw=vinoUNAM,thick,fill=vinoUNAM,fill opacity=0.25,smooth] coordinates {(6.9310,0.0000) (7.0860,0.0000) (7.2410,0.0001) (7.3960,0.0002) (7.5510,0.0005) (7.7060,0.0010) (7.8610,0.0017) (8.0170,0.0026) (8.1720,0.0033) (8.3270,0.0038) (8.4820,0.0040) (8.6370,0.0036) (8.7920,0.0030) (8.9470,0.0024) (9.1020,0.0021) (9.2570,0.0024) (9.4120,0.0036) (9.5670,0.0057) (9.7220,0.0087) (9.8770,0.0126) (10.0320,0.0174) (10.1870,0.0228) (10.3420,0.0290) (10.4970,0.0356) (10.6520,0.0424) (10.8070,0.0487) (10.9620,0.0544) (11.1170,0.0590) (11.2720,0.0626) (11.4270,0.0654) (11.5820,0.0679) (11.7370,0.0714) (11.8920,0.0776) (12.0470,0.0887) (12.2030,0.1067) (12.3580,0.1330) (12.5130,0.1680) (12.6680,0.2115) (12.8230,0.2624) (12.9780,0.3202) (13.1330,0.3842) (13.2880,0.4536) (13.4430,0.5273) (13.5980,0.6033) (13.7530,0.6791) (13.9080,0.7517) (14.0630,0.8184) (14.2180,0.8767) (14.3730,0.9251) (14.5280,0.9624) (14.6830,0.9876) (14.8380,1.0000) (14.9930,0.9990) (15.1480,0.9840) (15.3030,0.9550) (15.4580,0.9125) (15.6130,0.8582) (15.7680,0.7951) (15.9230,0.7267) (16.0780,0.6568) (16.2340,0.5888) (16.3890,0.5252) (16.5440,0.4676) (16.6990,0.4159) (16.8540,0.3693) (17.0090,0.3259) (17.1640,0.2847) (17.3190,0.2454) (17.4740,0.2084) (17.6290,0.1749) (17.7840,0.1454) (17.9390,0.1204) (18.0940,0.0996) (18.2490,0.0825) (18.4040,0.0684) (18.5590,0.0573) (18.7140,0.0487) (18.8690,0.0424) (19.0240,0.0379) (19.1790,0.0346) (19.3340,0.0320) (19.4890,0.0300) (19.6440,0.0282) (19.7990,0.0267) (19.9540,0.0252) (20.1090,0.0235) (20.2640,0.0213) (20.4200,0.0187) (20.5750,0.0157) (20.7300,0.0128) (20.8850,0.0103) (21.0400,0.0083) (21.1950,0.0068) (21.3500,0.0056) (21.5050,0.0045) (21.6600,0.0035) (21.8150,0.0024) (21.9700,0.0016) (22.1250,0.0009) (22.2800,0.0005) (22.4350,0.0002) (22.5900,0.0001) (22.7450,0.0001) (22.9000,0.0001) (23.0550,0.0003) (23.2100,0.0006) (23.3650,0.0011) (23.5200,0.0018) (23.6750,0.0026) (23.8300,0.0034) (23.9850,0.0039) (24.1400,0.0039) (24.2950,0.0035) (24.4510,0.0028) (24.6060,0.0020) (24.7610,0.0014) (24.9160,0.0011) (25.0710,0.0012) (25.2260,0.0017) (25.3810,0.0024) (25.5360,0.0032) (25.6910,0.0038) (25.8460,0.0041) (26.0010,0.0040) (26.1560,0.0037) (26.3110,0.0034) (26.4660,0.0034) (26.6210,0.0036) (26.7760,0.0039) (26.9310,0.0041) (27.0860,0.0039) (27.2410,0.0034) (27.3960,0.0026) (27.5510,0.0017) (27.7060,0.0010) (27.8610,0.0005) (28.0160,0.0002) (28.1710,0.0001) (28.3260,0.0000) (28.4810,0.0000)};
+\addlegendentry{2026}
+\draw[grisT,dashed] (axis cs:0,0) -- (axis cs:0,1.18);
+\end{axis}
+\end{tikzpicture}
+\caption{Validaci\'on \emph{leave-one-year-out}. Distribuci\'on a
+posteriori de la discrepancia predictiva media para cada ciclo excluido.
+Los ciclos presenciales 2024 y 2025 se centran en cero; 2026 se separa por
+completo de la banda de calibraci\'on.}
+\label{fig:loyo}
+\end{figure}
+
+\begin{table}[t]
+\caption{Validaci\'on \emph{leave-one-year-out}. $n$ es el n\'umero de
+programas evaluados; $\overline{D}$ la discrepancia media en aciertos.}
+\label{tab:loyo}
+\begin{ruledtabular}
+\begin{tabular}{lcccc}
+Ciclo & $n$ & $\overline{D}$ & IC $95\%$ & RECM \\ \colrule
+2024 & 152 & 0.98 & [-4.27,\,5.82] & 4.33 \\
+2025 & 164 & -0.57 & [-4.98,\,3.64] & 4.46 \\
+2026 & 160 & 14.96 & [11.61,\,18.31] & 16.83 \\
+\end{tabular}
+\end{ruledtabular}
+\end{table}
+
+Los resultados (figura~\ref{fig:loyo}, tabla~\ref{tab:loyo}) establecen la
+banda de calibraci\'on. Para 2024 y 2025 la discrepancia media es
+compatible con cero y el error cuadr\'atico medio ronda los $4.4$
+aciertos. Para 2026 la discrepancia media es $14.96$ aciertos, con el
+extremo inferior del intervalo al $95\%$ en $11.61$, muy por encima del
+extremo superior de cualquiera de los ciclos de calibraci\'on. El error
+cuadr\'atico medio se cuadruplica. En t\'erminos operativos: el modelo
+predice un ciclo presencial no observado con un error t\'ipico de $\pm 5$
+aciertos, y falla en 2026 por un margen tres veces mayor y sistem\'atico
+en signo.
+
+\subsection{Heterogeneidad}
+
+La discrepancia de 2026 no es uniforme (tabla~\ref{tab:het},
+figura~\ref{fig:het}). Las \'areas I, II y III presentan valores medianos
+entre $16.7$ y $18.2$ aciertos, mientras que el \'area IV se sit\'ua en
+$7.6$. Interpretamos esta diferencia con cautela: los programas del
+\'area IV concentran los cortes m\'as bajos y por tanto la mayor
+proximidad al piso administrativo, donde el estad\'istico de orden pierde
+sensibilidad. Parte de la atenuaci\'on es, con alta probabilidad, un
+artefacto de censura y no un efecto sustantivo.
+
+\begin{figure}[t]
+\centering
+\begin{tikzpicture}
+\begin{axis}[
+  width=0.68\columnwidth, height=4.4cm,
+  xlabel={Discrepancia mediana en 2026 (aciertos)},
+  xmin=0, xmax=24, ytick={1, 2, 3, 4}, yticklabels={{I. F\'is.-Mat.}, {II. Biol.\,y\,Salud}, {III. Sociales}, {IV. Human.\,y\,Artes}},
+  ytick style={draw=none}, y dir=reverse, ymin=0.4, ymax=4.6,
+  yticklabel style={font=\scriptsize,align=right},
+]
+\draw[azulCCH,thick] (axis cs:10.50,1) -- (axis cs:21.64,1);
+\draw[azulCCH,thick] (axis cs:11.79,2) -- (axis cs:22.47,2);
+\draw[azulCCH,thick] (axis cs:11.83,3) -- (axis cs:20.88,3);
+\draw[azulCCH,thick] (axis cs:4.32,4) -- (axis cs:9.12,4);
+\addplot[only marks,mark=*,mark size=2.4pt,azulCCH,
+         mark options={fill=doradoCCH,draw=azulCCH,line width=0.7pt}]
+  coordinates {(16.65,1.00) (17.88,2.00) (18.24,3.00) (7.61,4.00)};
+\end{axis}
+\end{tikzpicture}
+\caption{Discrepancia mediana por \'area de conocimiento en 2026. Las
+l\'ineas indican el rango intercuartil entre programas. La atenuaci\'on
+del \'area IV es atribuible en parte a censura por el piso
+administrativo.}
+\label{fig:het}
+\end{figure}
+
+\begin{table}[t]
+\caption{Discrepancia de 2026 por \'area de conocimiento y por modalidad
+de estudio, en aciertos.}
+\label{tab:het}
+\begin{ruledtabular}
+\begin{tabular}{lccc}
+Estrato & $n$ & Media & Mediana \\ \colrule
+I. F\'isico-Matem\'aticas & 41 & 15.78 & 16.65 \\
+II. Biol\'ogicas y Salud & 39 & 17.47 & 17.88 \\
+III. Sociales & 49 & 16.25 & 18.24 \\
+IV. Humanidades y Artes & 31 & 8.81 & 7.61 \\
+\colrule
+Abierta & 20 & 14.37 & 15.27 \\
+Escolarizado & 127 & 15.34 & 16.35 \\
+Suayed & 13 & 12.45 & 12.09 \\
+\end{tabular}
+\end{ruledtabular}
+\end{table}
+
+Por modalidad, en cambio, la homogeneidad es llamativa: escolarizado
+($15.3$), abierta ($14.4$) y a distancia ($12.5$) presentan
+discrepancias comparables. Este resultado corrige de manera directa una
+lectura descriptiva ingenua: sobre los puntajes de corte sin modelar, las
+modalidades abierta y a distancia parecen saltar casi el doble que la
+escolarizada. Esa diferencia aparente se disuelve al condicionar sobre las
+razones de selecci\'on, y era un artefacto de composici\'on.
+
+\subsection{Sensibilidad al prior sobre $s$}\label{sec:sens}
+
+La tabla~\ref{tab:sens} reporta $\Delta\tau_{2026-2025}$ fijando $s$ en
+valores que abarcan un factor de dos. La estimaci\'on var\'ia entre
+$14.7$ y $16.3$ aciertos: el par\'ametro peor identificado del modelo no
+compromete la conclusi\'on. Cabe se\~nalar adem\'as que, con prior
+centrado en $17$, la posterior se desplaza a $21.1$, lo que indica que
+$s$ recibe informaci\'on emp\'irica genuina a trav\'es de la estructura
+aditiva.
+
+\begin{table}[t]
+\caption{An\'alisis de sensibilidad: $\Delta\tau_{2026-2025}$ con la
+desviaci\'on est\'andar latente $s$ fijada.}
+\label{tab:sens}
+\begin{ruledtabular}
+\begin{tabular}{lcc}
+$s$ (aciertos) & $\Delta\tau$ & IC $95\%$ \\ \colrule
+13 & 14.74 & [13.88,\,15.59] \\
+17 & 15.29 & [14.51,\,16.06] \\
+21 & 15.82 & [15.09,\,16.57] \\
+25 & 16.29 & [15.54,\,17.04] \\
+\end{tabular}
+\end{ruledtabular}
+\end{table}
+
+\section{Qu\'e no puede concluirse}\label{sec:discusion}
+
+El desplazamiento estimado es grande, robusto y est\'a bien calibrado
+contra el comportamiento hist\'orico del modelo. Nada de ello autoriza a
+atribuirlo a un mecanismo particular, y conviene ser expl\'icito sobre por
+qu\'e.
+
+El dise\~no carece de grupo de control contempor\'aneo. La totalidad de
+los sustentantes de 2026 recibi\'o el mismo tratamiento, de modo que el
+estimando $\Delta\tau$ agrega \emph{todo} lo que cambi\'o en ese ciclo. Al
+menos cuatro mecanismos son compatibles con lo observado y este dise\~no
+no los distingue.
+
+\emph{(i) Reducci\'on de fricci\'on log\'istica.} Presentar desde el
+domicilio elimina traslados y la incertidumbre asociada a sedes
+desconocidas. El mecanismo es real y ben\'evolo. Observamos, sin embargo,
+que la tasa de no presentaci\'on en la modalidad escolarizada
+\emph{aument\'o} de $0.171$ a $0.184$, lo que debilita la versi\'on fuerte
+de esta explicaci\'on.
+
+\emph{(ii) Cambio de instrumento.} Una ventana de aplicaci\'on de tres
+semanas exige m\'ultiples formas del examen. Cualquier diferencia de
+calibraci\'on entre bancos de reactivos se confunde de manera perfecta con
+la modalidad.
+
+\emph{(iii) Integridad del proceso.} La propia instituci\'on report\'o la
+cancelaci\'on del proceso de aproximadamente el $2\%$ de los aspirantes
+por conductas contrarias a la convocatoria~\cite{gaceta2026}. Una ventana
+prolongada crea, en principio, condiciones para la filtraci\'on de
+reactivos entre jornadas.
+
+\emph{(iv) Composici\'on de la poblaci\'on.} La participaci\'on y la
+oferta de lugares cambiaron simult\'aneamente, alterando qui\'en se
+presenta y con qu\'e nivel de preparaci\'on.
+
+Ninguna partici\'on de $\Delta\tau$ entre estos cuatro canales es
+identificable con datos agregados de programa-ciclo. Se\~nalamos, no
+obstante, un dise\~no que s\'i tendr\'ia poder discriminante y que
+requiere \'unicamente informaci\'on p\'ublica adicional: la asignaci\'on
+de cada programa a una jornada espec\'ifica dentro de la ventana de tres
+semanas. Bajo el mecanismo (i), $\Delta\tau$ debe ser homog\'eneo respecto
+de la fecha de aplicaci\'on; bajo el mecanismo (iii), debe crecer con
+ella. Se trata de un contraste de dosis-respuesta con grupo de
+comparaci\'on interno al ciclo 2026, inmune a la mayor parte de los
+factores de confusi\'on enumerados. Lo dejamos como continuaci\'on
+natural de este trabajo.
+
+Una limitaci\'on adicional merece \'enfasis. Todas las inferencias operan
+en el nivel de programa-ciclo. Trasladarlas a afirmaciones sobre
+sustentantes individuales constituir\'ia una falacia ecol\'ogica. En
+particular, este an\'alisis no sustenta ninguna afirmaci\'on sobre la
+conducta de ning\'un aspirante, ni sobre la validez de ninguna admisi\'on
+concreta.
+
+\section{Conclusiones}
+
+Tratar el puntaje de corte como lo que es, un estad\'istico de orden
+censurado y no como una medida de desempe\~no modifica de manera
+sustantiva las conclusiones. El desplazamiento de la distribuci\'on
+latente de puntajes en 2026 es de $15.82$ aciertos sobre 120, cerca de
+$0.75$ desviaciones est\'andar latentes, frente a un aumento aparente de
+$9.2$ aciertos en los cortes publicados. Una validaci\'on
+\emph{leave-one-year-out} sit\'ua ese valor muy fuera de la banda de
+error predictivo del modelo, calibrada en $\pm 5$ aciertos sobre los
+ciclos presenciales. El resultado resiste variaciones de un factor dos en
+el \'unico par\'ametro d\'ebilmente identificado.
+
+Metodol\'ogicamente, el trabajo ilustra que la marginalizaci\'on
+anal\'itica de efectos aleatorios gaussianos permite abordar modelos
+jer\'arquicos de varios cientos de par\'ametros con muestreadores de
+ensamble, que de otro modo resultar\'ian inadecuados.
+
+Sustantivamente, la conclusi\'on defendible es que el proceso de medici\'on
+de 2026 no es comparable con el de los ciclos precedentes. Determinar
+\emph{por qu\'e} exige informaci\'on que este conjunto de datos no
+contiene.
+
+\begin{acknowledgments}
+El autor agradece a la Direcci\'on General de Administraci\'on Escolar de
+la UNAM la publicaci\'on abierta de las cifras del concurso de
+selecci\'on, sin la cual este an\'alisis no ser\'ia posible. El
+dise\~no del estudio, las decisiones de modelaci\'on, la interpretaci\'on
+de los resultados y la responsabilidad por su contenido corresponden
+\'integramente al autor.
+\end{acknowledgments}
+
+\begin{thebibliography}{99}
+
+\bibitem{gaceta2026}
+\emph{La UNAM realiza la aplicaci\'on en l\'inea de su examen de
+admisi\'on para el ingreso a licenciatura 2026}, Gaceta UNAM
+(25 de mayo de 2026).
+
+\bibitem{hager1989}
+W.~W. Hager, \emph{Updating the inverse of a matrix},
+SIAM Rev. \textbf{31}, 221 (1989).
+
+\bibitem{goodman2010}
+J.~Goodman and J.~Weare, \emph{Ensemble samplers with affine invariance},
+Commun. Appl. Math. Comput. Sci. \textbf{5}, 65 (2010).
+
+\bibitem{foremanmackey2013}
+D.~Foreman-Mackey, D.~W. Hogg, D.~Lang, and J.~Goodman,
+\emph{emcee: The MCMC hammer},
+Publ. Astron. Soc. Pac. \textbf{125}, 306 (2013).
+
+\bibitem{gelman2013}
+A.~Gelman, J.~B. Carlin, H.~S. Stern, D.~B. Dunson, A.~Vehtari, and
+D.~B. Rubin, \emph{Bayesian Data Analysis}, 3rd ed.
+(CRC Press, Boca Raton, 2013).
+
+\bibitem{vehtari2017}
+A.~Vehtari, A.~Gelman, and J.~Gabry, \emph{Practical Bayesian model
+evaluation using leave-one-out cross-validation and WAIC},
+Stat. Comput. \textbf{27}, 1413 (2017).
+
+\bibitem{betancourt2013}
+M.~Betancourt and M.~Girolami, \emph{Hamiltonian Monte Carlo for
+hierarchical models}, arXiv:1312.0906 (2013).
+
+\bibitem{holland1986}
+P.~W. Holland, \emph{Statistics and causal inference},
+J. Am. Stat. Assoc. \textbf{81}, 945 (1986).
+
+\bibitem{rubin1974}
+D.~B. Rubin, \emph{Estimating causal effects of treatments in randomized
+and nonrandomized studies},
+J. Educ. Psychol. \textbf{66}, 688 (1974).
+
+\end{thebibliography}
+
+\end{document}
